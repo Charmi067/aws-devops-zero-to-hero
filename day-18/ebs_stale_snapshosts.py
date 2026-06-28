@@ -10,14 +10,14 @@ def lambda_handler(event, context):
     instances_response = ec2.describe_instances(Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
     active_instance_ids = set()
 
-    for reservation in instances_response['Reservations']:
+    for reservation in instances_response['Reservations']:# ec2 instances are grouped inside reservations and there can be multiple reservation
         for instance in reservation['Instances']:
             active_instance_ids.add(instance['InstanceId'])
 
     # Iterate through each snapshot and delete if it's not attached to any volume or the volume is not attached to a running instance
     for snapshot in response['Snapshots']:
         snapshot_id = snapshot['SnapshotId']
-        volume_id = snapshot.get('VolumeId')
+        volume_id = snapshot.get('VolumeId')# we can also use something like snapshot[] but with it if the VolumeId is not available then it will give key error and with .get we will not have key error
 
         if not volume_id:
             # Delete the snapshot if it's not attached to any volume
@@ -26,8 +26,9 @@ def lambda_handler(event, context):
         else:
             # Check if the volume still exists
             try:
-                volume_response = ec2.describe_volumes(VolumeIds=[volume_id])
-                if not volume_response['Volumes'][0]['Attachments']:
+                volume_response = ec2.describe_volumes(VolumeIds=[volume_id])#check if the volume is still there in aws accountbcz there is a 
+                #difference between it is not like if the volume id is there in metadata of Ebs then there is actually a volume peresent
+                if not volume_response['Volumes'][0]['Attachments']:# bcz volume response provides list
                     ec2.delete_snapshot(SnapshotId=snapshot_id)
                     print(f"Deleted EBS snapshot {snapshot_id} as it was taken from a volume not attached to any running instance.")
             except ec2.exceptions.ClientError as e:
